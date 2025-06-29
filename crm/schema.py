@@ -4,7 +4,8 @@ from crm.models import Customer, Order, Product
 from graphql import GraphQLError
 import re
 from django.db import transaction
-
+from graphene_django.filter import DjangoFilterConnectionField
+from .filters import CustomerFilter, ProductFilter, OrderFilter
 
 
 class CustomerType(DjangoObjectType):
@@ -134,6 +135,9 @@ class Query(graphene.ObjectType):
     customer = graphene.Field(CustomerType, id=graphene.ID(required=True))
     products = graphene.List(ProductType)
     orders = graphene.List(OrderType)
+    all_customers = DjangoFilterConnectionField(CustomerType, filterset_class=CustomerFilter, order_by=graphene.List(of_type=graphene.String))
+    all_products = DjangoFilterConnectionField(ProductType, filterset_class=ProductFilter, order_by=graphene.List(of_type=graphene.String))
+    all_orders = DjangoFilterConnectionField(OrderType, filterset_class=OrderFilter, order_by=graphene.List(of_type=graphene.String))
     
     def resolve_customers(self, info):
         return Customer.objects.all()
@@ -146,6 +150,15 @@ class Query(graphene.ObjectType):
         
     def resolve_orders(self, info):
         return Order.objects.all()
+    
+    def resolve_all_customers(self, info, **kwargs):
+        return Customer.objects.all().order_by(*kwargs.get("order_by", ["id"]))
+
+    def resolve_all_products(self, info, **kwargs):
+        return Product.objects.all().order_by(*kwargs.get("order_by", ["id"]))
+
+    def resolve_all_orders(self, info, **kwargs):
+        return Order.objects.all().order_by(*kwargs.get("order_by", ["id"]))
 
 # Create the schema instance
 crm_schema = graphene.Schema(query=Query, mutation=Mutation)
